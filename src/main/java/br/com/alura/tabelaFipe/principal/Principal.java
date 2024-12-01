@@ -2,12 +2,15 @@ package br.com.alura.tabelaFipe.principal;
 
 import br.com.alura.tabelaFipe.model.DadosCarros;
 import br.com.alura.tabelaFipe.model.Modelos;
+import br.com.alura.tabelaFipe.model.Veiculo;
 import br.com.alura.tabelaFipe.service.ConsumoApi;
 import br.com.alura.tabelaFipe.service.ConverteDados;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class Principal {
 
@@ -35,6 +38,17 @@ public class Principal {
             List<DadosCarros> modelos = obterModelos(endereco, codigoMarca);
             System.out.println("\nOs modelos dessa marca são:");
             modelos.forEach(modelo -> System.out.println(modelo.codigo() + " - " + modelo.nome()));
+
+            // Filtrar modelos por nome
+            List<DadosCarros> modelosFiltrados = filtrarModelosPorNome(modelos);
+
+            // Obter avaliação por anos
+            List<Veiculo> veiculos = buscarValoresAvaliacao(endereco, codigoMarca, modelosFiltrados);
+
+            // Exibir veículos avaliados
+            System.out.println("\nTodos os veículos filtrados com avaliações por ano: ");
+            veiculos.forEach(System.out::println);
+
         } catch (Exception e) {
             System.err.println("Ocorreu um erro: " + e.getMessage());
         }
@@ -82,4 +96,36 @@ public class Principal {
                 .sorted(Comparator.comparing(DadosCarros::nome))
                 .toList();
     }
+
+    private List<DadosCarros> filtrarModelosPorNome(List<DadosCarros> modelos) {
+        System.out.println("\nDigite um trecho do nome do carro a ser buscado:");
+        String nomeVeiculo = leitura.nextLine();
+        List<DadosCarros> modelosFiltrados = modelos.stream()
+                .filter(m -> m.nome().toLowerCase().contains(nomeVeiculo.toLowerCase()))
+                .collect(Collectors.toList());
+
+        System.out.println("\nModelos filtrados:");
+        modelosFiltrados.forEach(modelo -> System.out.println(modelo.codigo() + " - " + modelo.nome()));
+
+        return modelosFiltrados;
+    }
+
+    private List<Veiculo> buscarValoresAvaliacao(String enderecoBase, String codigoMarca, List<DadosCarros> modelosFiltrados) {
+        System.out.println("\nDigite o código do modelo para buscar os valores de avaliação:");
+        String codigoModelo = leitura.nextLine();
+
+        String urlAnos = enderecoBase + "/" + codigoMarca + "/modelos/" + codigoModelo + "/anos";
+        String jsonAnos = consumo.obterDados(urlAnos);
+        List<DadosCarros> anos = conversor.obterLista(jsonAnos, DadosCarros.class);
+
+        List<Veiculo> veiculos = new ArrayList<>();
+        for (DadosCarros ano : anos) {
+            String urlDetalhes = urlAnos + "/" + ano.codigo();
+            String jsonDetalhes = consumo.obterDados(urlDetalhes);
+            Veiculo veiculo = conversor.obterDados(jsonDetalhes, Veiculo.class);
+            veiculos.add(veiculo);
+        }
+        return veiculos;
+    }
+
 }
